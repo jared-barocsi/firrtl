@@ -6,9 +6,12 @@ package proto
 import java.io.{File, FileInputStream, InputStream}
 
 import collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 import FirrtlProtos._
 import com.google.protobuf.CodedInputStream
 import Firrtl.Statement.{Formal, ReadUnderWrite}
+import firrtl.ir.DefModule
+
 
 object FromProto {
 
@@ -31,6 +34,35 @@ object FromProto {
     cistream.setRecursionLimit(Integer.MAX_VALUE) // Disable recursion depth check
     val pb = firrtl.FirrtlProtos.Firrtl.parseFrom(cistream)
     proto.FromProto.convert(pb)
+  }
+
+  /** Deserialize all the ProtoBuf representation of [[ir.Circuit]] in @director
+    *
+    * @param dir directory containing ProtoBuf representation
+    * @return Deserialized FIRRTL Circuit
+    */
+  def fromDirectory(dir: String): ir.Circuit = {
+
+      val d = new File(dir)
+      val fileList = if (d.exists && d.isDirectory) {
+        d.listFiles.filter(_.isFile).toList
+      } else {
+        List[File]()
+      }
+
+    val modules = ListBuffer[Seq[DefModule]]()
+    fileList.map(f => {
+      val is = new FileInputStream(f)
+      val cistream = CodedInputStream.newInstance(is)
+      cistream.setRecursionLimit(Integer.MAX_VALUE) // Disable recursion depth check
+      val pb = firrtl.FirrtlProtos.Firrtl.parseFrom(cistream)
+
+      modules += convertToSeq(pb)
+
+    })
+
+    //val top = c.getTop(0).getName
+    ir.Circuit(ir.NoInfo, modules.flatten.toSeq, "CoreIPSubsystemVerifTestHarness")
   }
 
   // Convert from ProtoBuf message repeated Statements to FIRRRTL Block
@@ -369,11 +401,17 @@ object FromProto {
     }
 
   def convert(proto: Firrtl): ir.Circuit = {
+    val modules = convertToSeq(proto)
+    val top = proto.getCircuit(0).getTop(0).getName
+    ir.Circuit(ir.NoInfo, modules, top)
+  }
+
+  def convertToSeq(proto: Firrtl): Seq[DefModule] = {
     require(proto.getCircuitCount == 1, "Only 1 circuit is currently supported")
     val c = proto.getCircuit(0)
     require(c.getTopCount == 1, "Only 1 top is currently supported")
-    val modules = c.getModuleList.asScala.map(convert(_)).toSeq
-    val top = c.getTop(0).getName
-    ir.Circuit(ir.NoInfo, modules, top)
+    c.getModuleList.asScala.map(convert(_)).toSeq
   }
+
+
 }

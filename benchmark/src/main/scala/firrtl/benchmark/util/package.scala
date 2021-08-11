@@ -13,6 +13,12 @@ package object util {
     case NonFatal(_) => Parser.parseFile(filename, Parser.IgnoreInfo)
   }
 
+  def directoryToCircuit(dir: String): Circuit = try {
+    proto.FromProto.fromDirectory(dir)
+  } catch {
+    case NonFatal(_) => Parser.parseFile(dir, Parser.IgnoreInfo)
+  }
+
   def mean(xs: Iterable[Double]): Double = xs.sum / xs.size
 
   def median(xs: Iterable[Double]): Double = {

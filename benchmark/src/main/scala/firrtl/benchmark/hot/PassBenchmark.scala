@@ -14,6 +14,7 @@ abstract class PassBenchmark(passFactory: () => Pass) extends App {
   val runs = args(2).toInt
 
   val input = filenameToCircuit(inputFile)
+  val input = directoryToCircuit(inputFile)
   val inputState = CircuitState(input, ChirrtlForm)
 
   val manager = new TransformManager(passFactory().prerequisites)

@@ -6,7 +6,7 @@ import firrtl._
 import firrtl.ir.Circuit
 import firrtl.annotations.{Annotation, NoTargetAnnotation}
 import firrtl.options.{Dependency, HasShellOptions, OptionsException, ShellOption, Unserializable}
-import java.io.FileNotFoundException
+import java.io.{FileNotFoundException,File}
 import java.nio.file.NoSuchFileException
 
 import firrtl.stage.TransformManager.TransformDependency
@@ -37,9 +37,17 @@ case class FirrtlFileAnnotation(file: String) extends NoTargetAnnotation with Ci
   def toCircuit(info: Parser.InfoMode): FirrtlCircuitAnnotation = {
     val circuit =
       try {
-        FirrtlStageUtils.getFileExtension(file) match {
-          case ProtoBufFile => proto.FromProto.fromFile(file)
-          case FirrtlFile   => Parser.parseFile(file, info)
+
+        //add support for our argument being a full directory containing .pb files
+        val isDir = new File(file)
+        if (isDir.exists && isDir.isDirectory) {
+          proto.FromProto.fromDirectory(file)
+        }
+        else {
+          FirrtlStageUtils.getFileExtension(file) match {
+            case ProtoBufFile => proto.FromProto.fromFile(file)
+            case FirrtlFile => Parser.parseFile(file, info)
+          }
         }
       } catch {
         case a @ (_: FileNotFoundException | _: NoSuchFileException) =>
