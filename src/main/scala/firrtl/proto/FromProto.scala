@@ -36,33 +36,28 @@ object FromProto {
     proto.FromProto.convert(pb)
   }
 
-  /** Deserialize all the ProtoBuf representation of [[ir.Circuit]] in @director
+  /** Deserialize all the ProtoBuf representations of [[ir.Circuit]] in @directory
     *
-    * @param dir directory containing ProtoBuf representation
+    * @param dir directory containing ProtoBuf representation(s)
     * @return Deserialized FIRRTL Circuit
     */
   def fromDirectory(dir: String): ir.Circuit = {
+    val d = new File(dir)
+    val fileList = if (d.exists && d.isDirectory) {
+      d.listFiles.filter(_.isFile).toList
+    } else {
+      List[File]()
+    }
 
-      val d = new File(dir)
-      val fileList = if (d.exists && d.isDirectory) {
-        d.listFiles.filter(_.isFile).toList
-      } else {
-        List[File]()
-      }
+    val circuits = fileList.map(f => fromInputStream(new FileInputStream(f)))
+    val tops = circuits.map(c => c.main).distinct
 
-    val modules = ListBuffer[Seq[DefModule]]()
-    fileList.map(f => {
-      val is = new FileInputStream(f)
-      val cistream = CodedInputStream.newInstance(is)
-      cistream.setRecursionLimit(Integer.MAX_VALUE) // Disable recursion depth check
-      val pb = firrtl.FirrtlProtos.Firrtl.parseFrom(cistream)
+    require(tops.length == 1, "Not all multi-ProtoBufs point to the same top")
 
-      modules += convertToSeq(pb)
+    // Concatenate all modules together
+    val modules = circuits.flatMap(c => c.modules).distinct
 
-    })
-
-    //val top = c.getTop(0).getName
-    ir.Circuit(ir.NoInfo, modules.flatten.toSeq, "CoreIPSubsystemVerifTestHarness")
+    ir.Circuit(ir.NoInfo, modules, tops.head)
   }
 
   // Convert from ProtoBuf message repeated Statements to FIRRRTL Block
