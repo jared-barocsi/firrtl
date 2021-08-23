@@ -12,7 +12,6 @@ import com.google.protobuf.CodedInputStream
 import Firrtl.Statement.{Formal, ReadUnderWrite}
 import firrtl.ir.DefModule
 
-
 object FromProto {
 
   /** Deserialize ProtoBuf representation of [[ir.Circuit]]
@@ -407,6 +406,5 @@ object FromProto {
     require(c.getTopCount == 1, "Only 1 top is currently supported")
     c.getModuleList.asScala.map(convert(_)).toSeq
   }
-
 
 }
